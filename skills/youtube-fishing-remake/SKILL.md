@@ -11,8 +11,10 @@ description: 用 Playwright CDP 连接已登录的 gemini.google.com 理解 YouT
 **不要直接跑系统 `python` / `python3`。** 一律：
 
 ```bash
-bash scripts/uv_run.sh scripts/<脚本>.py ...
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/<脚本>.py ...
 ```
+
+安装到 `~/.cursor/skills/` 之后，把前缀换成该目录即可。
 
 `uv_run.sh` 内部会 `uv venv --python 3.11`，再用 `.venv/bin/python` 执行。
 
@@ -21,7 +23,7 @@ bash scripts/uv_run.sh scripts/<脚本>.py ...
 1. Chrome 已开远程调试（没有就先跑启动脚本）：
 
 ```bash
-bash scripts/start-chrome-cdp.sh
+bash skills/youtube-fishing-remake/scripts/start-chrome-cdp.sh
 ```
 
 默认 `http://127.0.0.1:9222`，独立用户目录 `~/.youtube-remaker/chrome-profile`，可与日常 Chrome 并存。第一次要在这个窗口里登录 Google，并确认能打开 https://gemini.google.com/app 。
@@ -29,41 +31,42 @@ bash scripts/start-chrome-cdp.sh
 2. 先建 3.11 环境并检查依赖，缺了就停，不要继续跑：
 
 ```bash
-bash scripts/setup_venv.sh
-bash scripts/uv_run.sh scripts/check_deps.py
+bash skills/youtube-fishing-remake/scripts/setup_venv.sh
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/check_deps.py
 ```
 
 必须有 `ffmpeg`（含 `ffprobe`）、`yt-dlp`，以及 venv 里的 `edge-tts`。缺少时：
 
 ```bash
 brew install ffmpeg yt-dlp
-bash scripts/setup_venv.sh
+bash skills/youtube-fishing-remake/scripts/setup_venv.sh
 ```
 
 没有 `uv` 时：`curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 ## 工作流
 
-工作目录：`output/<youtube_id>/`。脚本都相对 **skill 根目录**（本仓库根，或安装后的 `~/.cursor/skills/youtube-fishing-remake` / `~/.claude/skills/youtube-fishing-remake`）。
+**skill 根目录**：`skills/youtube-fishing-remake/`（安装后是 `~/.cursor/skills/youtube-fishing-remake`）。  
+在**仓库根目录**执行下面的命令，成片写到当前工作区 `output/<youtube_id>/`。不要用掉点成片 skill，也不要往别的 skill 目录写代码。
 
 ```
 Task Progress:
-- [ ] bash scripts/uv_run.sh scripts/check_deps.py 通过
+- [ ] check_deps.py 通过
 - [ ] Chrome CDP 可用
 - [ ] Gemini 产出 edit.json
 - [ ] yt-dlp 下好源视频
 - [ ] 女声 TTS + ffmpeg 对齐合成
-- [ ] 把 final.mp4 路径交给用户，不自动发布
+- [ ] 把 final.mp4 路径、抖音爆款标题、作品简介、标签交给用户，不自动发布
 ```
 
 ### 1. 分析（Gemini 网页，省 token）
 
 ```bash
-bash scripts/uv_run.sh scripts/gemini_cdp.py --url "YOUTUBE_URL" --out "output/<id>/edit.json"
-bash scripts/uv_run.sh scripts/gemini_cdp.py --url "YOUTUBE_URL" --out "output/<id>/edit.json" --target-duration 30
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/gemini_cdp.py --url "YOUTUBE_URL" --out "output/<id>/edit.json"
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/gemini_cdp.py --url "YOUTUBE_URL" --out "output/<id>/edit.json" --target-duration 30
 ```
 
-脚本会：CDP 连接 → 复用或打开 Gemini 标签 → 新对话 → 把链接和提示词贴进去 → 等生成结束 → 抽出 JSON。
+脚本会：CDP 连接 → 复用或打开 Gemini 标签 → 新对话 → 把链接和提示词贴进去 → 等生成结束 → 抽出 JSON → **关掉 Gemini 标签**（不关 Chrome，避免网页反复跳 App）。`--reuse-tab` 时不关标签。
 
 失败时：
 - 连不上 9222：先跑 `start-chrome-cdp.sh`，让用户登录后再重试
@@ -75,14 +78,14 @@ bash scripts/uv_run.sh scripts/gemini_cdp.py --url "YOUTUBE_URL" --out "output/<
 ### 2. 下载 + 配音 + 剪辑
 
 ```bash
-bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --plan "output/<id>/edit.json" --workdir "output/<id>"
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/remake.py --url "YOUTUBE_URL" --plan "output/<id>/edit.json" --workdir "output/<id>"
 ```
 
 或一条龙（先分析再成片）：
 
 ```bash
-bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --all
-bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --all --target-duration 30
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/remake.py --all --url "YOUTUBE_URL"
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/remake.py --all --url "YOUTUBE_URL" --target-duration 30
 ```
 
 规则（已写进脚本，不要改策略）：
@@ -95,14 +98,15 @@ bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --all --target-dura
 - 每段 `script` 烧成底部硬字幕：黑体、字号约 66、橙红字、浅粉描边、外圈红晕；底部留白约 220px，避开播放条。不要白字黑边
 - 画面顶部居中叠 `assets/copyright.png`（鱼公移山版权图）；没有该文件才跳过
 - 合成到 `output/<id>/final.mp4` 后停，等用户验收
+- **每次成片必须把抖音爆款标题、作品简介、标签交给用户**（`edit.json` 的 `douyin_title` / `douyin_intro` / `douyin_tags`，脚本也会打到终端并写 `output/<id>/caption.txt`）。不要只给成片路径
 
 ### 3. 验收
 
-告诉用户：`edit.json` 里的时间轴、口播、成片路径。用户没要求就不要发抖音、不要改 JSON 里的选段。
+告诉用户：成片路径、`douyin_title`、`douyin_intro`、`douyin_tags`、时间轴和口播。用户没要求就不要发抖音、不要改 JSON 里的选段。
 
 ## 账号口播
 
-抖音号「鱼公移山」。提示词在 `prompts/analyze.txt`（`{url}` / `{duration_section}` 会被替换）。Gemini 必须吐这种 JSON：`douyin_title`、`douyin_tags`、`youtube_url`、`clips[].start/end`（秒，数字）、`clips[].script`。选段不要人脸、不要水印/Logo、不要原字幕。口播按约 3 字/秒写。若格式不对，在同一标签让它按 schema 重写。
+抖音号「鱼公移山」。提示词在 `prompts/analyze.txt`。Gemini 必须先写 `visuals`（画面事实）再定 `video_type`，口播只写画面里有的东西；讲解片要叫出钩名并讲外形/原理，禁止「能派上大用场」这类空话。JSON：`video_type`、`topic`、`visuals`、`douyin_title`、`douyin_intro`、`douyin_tags`、`youtube_url`、`clips[]`（start/end 不超过片源，短片至少 2 段）。不要选人脸。口播约 3 字/秒。文案和画面不符就开新对话重写。
 
 ## 路径
 
@@ -116,4 +120,4 @@ bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --all --target-dura
 | `scripts/remix.py` | 按视频 id 生成可复现的裁切/调色/颗粒等滤镜 |
 | `prompts/analyze.txt` | Gemini 提示词，`{url}`、`{duration_section}` 会被替换 |
 
-选择器在 `scripts/gemini_selectors.py`。Gemini 改版导致点不到输入框时，只改这个文件。更完整的本机操作说明见 `usage.md`（仓库里是 `md/usage.md`）。
+选择器在 `scripts/gemini_selectors.py`。Gemini 改版导致点不到输入框时，只改这个文件。更完整的本机操作说明见同目录 `usage.md`。

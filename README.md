@@ -1,71 +1,53 @@
 # youtube-remaker
 
-把 YouTube 短视频做成带中文口播、硬字幕和版权图的抖音成片。
+钓鱼口播相关 **Cursor / Claude skill** 仓库。每个 skill 单独放在 `skills/<name>/`，脚本和依赖互不引用。
 
-理解视频走 **已登录的 Gemini 网页**（Playwright CDP，不调用 Gemini API）。下载用 yt-dlp，配音用 edge-tts，剪辑用 ffmpeg。Python 固定 **uv + 3.11**。
+## skill 列表
 
-本仓库可安装为 Cursor / Claude skill。
+| 目录 | 做什么 |
+|------|------|
+| [`skills/youtube-fishing-remake`](skills/youtube-fishing-remake/SKILL.md) | YouTube 短视频 → Gemini 网页理解 → 抖音二创片 |
+| [`skills/fishing-spots-video`](skills/fishing-spots-video/SKILL.md) | 某地免费掉点 → OSM 地图卡 + 口播合集 |
 
-## 依赖
+新增 skill：在 `skills/` 下新建目录，自带 `SKILL.md`、`scripts/`、`requirements.txt`，不要改别的 skill 里的文件。
 
-- [uv](https://github.com/astral-sh/uv)
-- Google Chrome（开远程调试）
-- `ffmpeg`、`yt-dlp`（可用 Homebrew 安装）
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-brew install ffmpeg yt-dlp
-```
-
-## 安装 skill
+## 安装
 
 ```bash
 chmod +x install.sh
-./install.sh          # 交互选择 Cursor / Claude / 两者
-# 或
-./install.sh cursor
-./install.sh claude
+./install.sh cursor          # 全部 skill → ~/.cursor/skills/<name>
+./install.sh cursor fishing-spots-video
 ./install.sh both
+./install.sh uninstall
 ```
 
-`install.sh` 会执行 `uv venv --python 3.11` 并安装 `requirements.txt`。不要直接用系统 `python3`。
-
-## 做片
+每个 skill 自己 `uv venv --python 3.11`。不要用系统 `python3`。
 
 ```bash
-bash scripts/setup_venv.sh
-bash scripts/uv_run.sh scripts/check_deps.py
-bash scripts/start-chrome-cdp.sh   # 第一次在这个窗口登录 Google / Gemini
-
-bash scripts/uv_run.sh scripts/remake.py --all --url "https://www.youtube.com/shorts/xxxx"
+curl -LsSf https://astral.sh/uv/install.sh | sh
+brew install ffmpeg yt-dlp    # 二创还需要 yt-dlp；掉点合集只需 ffmpeg
 ```
 
-成片：`output/<视频id>/final.mp4`  
-时间轴：`output/<id>/edit.json`
+## 从仓库根做片
 
-可选 `--target-duration 30` 指定期望总秒数。
+YouTube 二创：
 
-更细的排错见 [`md/usage.md`](md/usage.md)。
+```bash
+bash skills/youtube-fishing-remake/scripts/start-chrome-cdp.sh
+bash skills/youtube-fishing-remake/scripts/uv_run.sh \
+  skills/youtube-fishing-remake/scripts/remake.py --all --url "https://www.youtube.com/shorts/xxxx"
+```
 
-## 成片效果
+掉点合集（先写好 `output/<slug>/spots.json`）：
 
-- 女声口播：`zh-CN-XiaoxiaoNeural`
-- 底部硬字幕：黑体、橙红字、浅粉描边
-- 顶部版权图：`assets/copyright.png`
-- 口播比画面长则慢放 / 加速音频 / 末帧定格
-- 默认二创滤镜：裁切、微旋转、调色、颗粒、暗角（不翻转）
+```bash
+bash skills/fishing-spots-video/scripts/uv_run.sh \
+  skills/fishing-spots-video/scripts/build.py \
+  --spots output/<slug>/spots.json \
+  --workdir output/<slug>
+```
 
-## 目录
-
-| 路径 | 作用 |
-|------|------|
-| `scripts/uv_run.sh` | 用 3.11 venv 跑脚本 |
-| `scripts/gemini_cdp.py` | CDP 驱动 Gemini，写出剪辑 JSON |
-| `scripts/remake.py` | 下载 + TTS + 二创滤镜 + 字幕 + 版权图 + 合成 |
-| `scripts/remix.py` | 按视频 id 生成二创滤镜参数 |
-| `prompts/analyze.txt` | Gemini 提示词 |
-| `assets/copyright.png` | 「鱼公移山」版权图 |
-| `SKILL.md` | Agent skill 说明 |
+成片都在当前工作区 `output/`。排错见 `skills/youtube-fishing-remake/usage.md`。
 
 ## License
 

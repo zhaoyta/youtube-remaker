@@ -113,6 +113,18 @@ def escape_drawtext(text: str) -> str:
     )
 
 
+def youtube_title(url: str) -> str:
+    try:
+        out = subprocess.check_output(
+            ["yt-dlp", "--no-playlist", "--skip-download", "--print", "%(title)s", url],
+            text=True,
+            timeout=60,
+        ).strip()
+        return out.splitlines()[-1].strip() if out else ""
+    except Exception:
+        return ""
+
+
 def download(url: str, dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists() and dest.stat().st_size > 0:
@@ -421,6 +433,57 @@ def load_plan(path: Path) -> dict:
     return data
 
 
+def normalize_tags(tags) -> list[str]:
+    if not tags:
+        return []
+    if isinstance(tags, str):
+        tags = [t for t in re.split(r"[\s,，]+", tags) if t]
+    out: list[str] = []
+    for tag in tags:
+        text = str(tag).strip()
+        if not text:
+            continue
+        if not text.startswith("#"):
+            text = "#" + text.lstrip("#")
+        out.append(text)
+    return out
+
+
+def fallback_intro(plan: dict) -> str:
+    scripts = []
+    for clip in plan.get("clips") or []:
+        text = str(clip.get("script") or clip.get("narration") or "").strip()
+        if text:
+            scripts.append(text.rstrip("！!。"))
+    if not scripts:
+        return str(plan.get("douyin_title") or "").strip()
+    joined = "，".join(scripts[:2])
+    if not joined.endswith(("！", "!", "。")):
+        joined += "！"
+    return joined
+
+
+def report_caption(plan: dict, dest: Path) -> None:
+    title = str(plan.get("douyin_title") or "").strip()
+    intro = str(plan.get("douyin_intro") or plan.get("douyin_desc") or "").strip()
+    if not intro:
+        intro = fallback_intro(plan)
+        plan["douyin_intro"] = intro
+    tags = normalize_tags(plan.get("douyin_tags"))
+    tag_line = " ".join(tags)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(
+        f"标题：{title}\n\n作品简介：{intro}\n\n标签：{tag_line}\n",
+        encoding="utf-8",
+    )
+    log("---------- 抖音文案 ----------")
+    log(f"爆款标题: {title or '（缺失）'}")
+    log(f"作品简介: {intro or '（缺失）'}")
+    log(f"标签: {tag_line or '（缺失）'}")
+    log(f"可复制: {dest}")
+    log("------------------------------")
+
+
 def edit(
     plan: dict,
     workdir: Path,
@@ -486,6 +549,12 @@ def edit(
     final = workdir / "final.mp4"
     concat_parts(parts, final)
     log(f"成片: {final}")
+    report_caption(plan, workdir / "caption.txt")
+    plan_dump = workdir / "edit.json"
+    plan_dump.write_text(
+        json.dumps(plan, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     return final
 
 
@@ -513,9 +582,10 @@ def main() -> int:
     require_deps()
 
     vid = youtube_id(args.url)
-    workdir = Path(args.workdir) if args.workdir else ROOT / "output" / vid
+    workdir = Path(args.workdir) if args.workdir else Path.cwd() / "output" / vid
     workdir.mkdir(parents=True, exist_ok=True)
     plan_path = Path(args.plan) if args.plan else workdir / "edit.json"
+    source = download(args.url, workdir / "source.mp4")
 
     if args.all or not plan_path.exists():
         gemini = ROOT / "scripts" / "gemini_cdp.py"
@@ -528,13 +598,18 @@ def main() -> int:
             str(plan_path),
             "--cdp",
             args.cdp,
+            "--source-duration",
+            f"{ffprobe_duration(source):.3f}",
         ]
+        title = youtube_title(args.url)
+        if title:
+            cmd.extend(["--source-title", title])
+            log(f"原片标题: {title}")
         if args.target_duration:
             cmd.extend(["--target-duration", f"{args.target_duration:g}"])
         run(cmd)
 
     plan = load_plan(plan_path)
-    source = download(args.url, workdir / "source.mp4")
     edit(plan, workdir, source, seed=vid, enable_remix=not args.no_remix)
     return 0
 

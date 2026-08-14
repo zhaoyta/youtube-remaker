@@ -161,14 +161,12 @@ def ensure_gemini_page(context, reuse_tab: bool):
         return gemini, False
     if gemini and not reuse_tab:
         log("打开新对话")
-        gemini.bring_to_front()
+        gemini.goto(GEMINI_URL, wait_until="domcontentloaded", timeout=30000)
+        gemini.wait_for_timeout(2500)
         new_btn = find_visible(gemini, sel.NEW_CHAT, timeout_ms=3000)
         if new_btn:
             new_btn.click()
-            gemini.wait_for_timeout(1500)
-        else:
-            gemini.goto(GEMINI_URL, wait_until="domcontentloaded", timeout=30000)
-            gemini.wait_for_timeout(2500)
+            gemini.wait_for_timeout(2000)
         return gemini, False
     log("打开 https://gemini.google.com/app")
     page = context.new_page()
@@ -186,16 +184,34 @@ def main() -> int:
     parser.add_argument("--reuse-tab", action="store_true", help="不新开对话，在当前 Gemini 标签继续")
     parser.add_argument("--timeout", type=int, default=240)
     parser.add_argument("--target-duration", type=float, help="期望成片总时长（秒），写入提示词")
+    parser.add_argument("--source-duration", type=float, help="片源真实时长（秒），写入提示词")
+    parser.add_argument("--source-title", default="", help="YouTube 原标题，写入提示词防串台")
     args = parser.parse_args()
 
     prompt_path = Path(args.prompt)
     template = prompt_path.read_text(encoding="utf-8")
-    if args.target_duration:
-        duration_section = f"- 期望总时长（秒）：{args.target_duration:g}"
+    duration_lines = []
+    title = (args.source_title or "").strip()
+    if title:
+        duration_lines.append(f"- 原片标题（仅供参考，以画面为准）：{title}")
+        duration_lines.append("- 若标题/画面都不是葫芦钩，禁止写葫芦钩")
+    if args.source_duration:
+        duration_lines.append(
+            f"- 片源真实时长（秒）：{args.source_duration:g}。"
+            f"所有 clips 的 end 必须 ≤ {args.source_duration:g}，不要规划更长的片段。"
+        )
     else:
-        duration_section = "- 期望总时长（秒）：未提供，请忽略该项"
-    prompt = template.replace("{url}", args.url.strip()).replace(
-        "{duration_section}", duration_section
+        duration_lines.append("- 片源真实时长（秒）：未知，请以视频实际长度为准，不要超出")
+    if args.target_duration:
+        duration_lines.append(f"- 期望成片总时长（秒）：{args.target_duration:g}（允许 ±10%）")
+    else:
+        duration_lines.append("- 期望成片总时长：未指定，覆盖片源即可，不要故意拉长")
+    duration_section = "\n".join(duration_lines)
+    prompt = (
+        "【全新任务，禁止复用上一条视频的标题、口播或装备名称】\n\n"
+        + template.replace("{url}", args.url.strip()).replace(
+            "{duration_section}", duration_section
+        )
     )
 
     try:
@@ -207,11 +223,10 @@ def main() -> int:
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    created_tab = False
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(cdp_url)
         context = browser.contexts[0] if browser.contexts else browser.new_context()
-        page, created_tab = ensure_gemini_page(context, args.reuse_tab)
+        page, _created_tab = ensure_gemini_page(context, args.reuse_tab)
         try:
             if "accounts.google.com" in page.url:
                 raise SystemExit("停在 Google 登录页。请在调试 Chrome 里登录后再跑。")
@@ -240,15 +255,39 @@ def main() -> int:
                 raise SystemExit(
                     f"无法从回复解析 JSON: {exc}\n原始文本在 {raw_path}，可加 --reuse-tab 让 Gemini 只输出 JSON。"
                 ) from exc
-            data["youtube_url"] = data.get("youtube_url") or args.url.strip()
-            data["source_url"] = data["youtube_url"]
+            url = args.url.strip()
+            data["youtube_url"] = url
+            data["source_url"] = url
             out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
             log(f"已写入 {out_path}，{len(data['clips'])} 个片段")
+            title = str(data.get("douyin_title") or "").strip() or "（缺失）"
+            intro = str(data.get("douyin_intro") or data.get("douyin_desc") or "").strip() or "（缺失）"
+            tags = data.get("douyin_tags") or []
+            if isinstance(tags, str):
+                tag_line = tags.strip()
+            else:
+                parts = []
+                for tag in tags:
+                    text = str(tag).strip()
+                    if not text:
+                        continue
+                    if not text.startswith("#"):
+                        text = "#" + text.lstrip("#")
+                    parts.append(text)
+                tag_line = " ".join(parts) or "（缺失）"
+            log("---------- 抖音文案 ----------")
+            log(f"爆款标题: {title}")
+            log(f"作品简介: {intro}")
+            log(f"标签: {tag_line}")
+            log("------------------------------")
         finally:
-            # 绝对不要 browser.close()，那会把用户的 Chrome 一起关掉
-            if created_tab:
+            # 绝对不要 browser.close()，那会把用户的 Chrome 一起关停。
+            # 分析完关掉 Gemini 标签，避免网页反复跳 App；--reuse-tab 时保留，方便补一句。
+            if not args.reuse_tab:
                 try:
-                    page.close()
+                    if not page.is_closed():
+                        page.close()
+                    log("已关闭 Gemini 标签")
                 except Exception:
                     pass
     return 0

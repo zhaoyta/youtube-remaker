@@ -17,10 +17,12 @@ chmod +x install.sh
 ./install.sh both
 ```
 
-skill 源码始终在本仓库。安装只是把 `SKILL.md`、`scripts/`、`prompts/` 拷到：
+skill 源码在 `skills/youtube-fishing-remake/`。安装是把整个目录拷到：
 
 - Cursor：`~/.cursor/skills/youtube-fishing-remake`
 - Claude：`~/.claude/skills/youtube-fishing-remake`
+
+只装这一个：`./install.sh cursor youtube-fishing-remake`
 
 **不要用系统 python3。** 先有 `uv`，再用 3.11 虚拟环境：
 
@@ -28,7 +30,7 @@ skill 源码始终在本仓库。安装只是把 `SKILL.md`、`scripts/`、`prom
 # 若没有 uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-bash scripts/setup_venv.sh          # 内部: uv venv --python 3.11 && uv pip install
+bash skills/youtube-fishing-remake/scripts/setup_venv.sh
 brew install yt-dlp ffmpeg
 ```
 
@@ -37,7 +39,7 @@ brew install yt-dlp ffmpeg
 运行前检查（必须通过 uv venv）：
 
 ```bash
-bash scripts/uv_run.sh scripts/check_deps.py
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/check_deps.py
 ```
 
 ## 每次做片
@@ -45,7 +47,7 @@ bash scripts/uv_run.sh scripts/check_deps.py
 1. 启动带调试端口的独立 Chrome（可和日常浏览器同时开）：
 
 ```bash
-bash scripts/start-chrome-cdp.sh
+bash skills/youtube-fishing-remake/scripts/start-chrome-cdp.sh
 ```
 
 第一次在这个窗口登录 Google，确认 https://gemini.google.com/app 能用。
@@ -53,17 +55,17 @@ bash scripts/start-chrome-cdp.sh
 2. 一条龙（Gemini 分析 + 下载 + 女声 + 剪辑）：
 
 ```bash
-bash scripts/uv_run.sh scripts/remake.py --all --url "https://www.youtube.com/shorts/xxxx"
-bash scripts/uv_run.sh scripts/remake.py --all --url "https://www.youtube.com/shorts/xxxx" --target-duration 30
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/remake.py --all --url "https://www.youtube.com/shorts/xxxx"
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/remake.py --all --url "https://www.youtube.com/shorts/xxxx" --target-duration 30
 ```
 
-成片在 `output/<视频id>/final.mp4`，时间轴在同目录 `edit.json`（`douyin_title` / `douyin_tags` / `clips[].script`）。
+成片在 `output/<视频id>/final.mp4`。同目录 `edit.json` 有时间轴和口播；`caption.txt` 是可直接复制的抖音标题、作品简介和标签。脚本结束时也会把这三项打到终端。
 
 只分析、或已有 JSON 再成片：
 
 ```bash
-bash scripts/uv_run.sh scripts/gemini_cdp.py --url "YOUTUBE_URL" --out output/<id>/edit.json
-bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --plan output/<id>/edit.json
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/gemini_cdp.py --url "YOUTUBE_URL" --out output/<id>/edit.json
+bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-remake/scripts/remake.py --url "YOUTUBE_URL" --plan output/<id>/edit.json
 ```
 
 ## 对齐规则
@@ -85,4 +87,4 @@ bash scripts/uv_run.sh scripts/gemini_cdp.py --url "YOUTUBE_URL" --out output/<i
 ```
 
 - **输入框找不到**：Google 改了网页，改 `scripts/gemini_selectors.py`。
-- **绝对不要**在脚本里 `browser.close()`，那会把调试 Chrome 一起关停。
+- **绝对不要**在脚本里 `browser.close()`，那会把调试 Chrome 一起关停。分析结束后只关 Gemini 标签，不关 Chrome。`--reuse-tab` 时保留标签。
