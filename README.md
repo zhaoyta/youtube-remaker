@@ -53,6 +53,7 @@ bash scripts/uv_run.sh scripts/remake.py --all --url "https://www.youtube.com/sh
 - 底部硬字幕：黑体、橙红字、浅粉描边
 - 顶部版权图：`assets/copyright.png`
 - 口播比画面长则慢放 / 加速音频 / 末帧定格
+- 默认二创滤镜：裁切、微旋转、调色、颗粒、暗角（不翻转）
 
 ## 目录
 
@@ -60,7 +61,8 @@ bash scripts/uv_run.sh scripts/remake.py --all --url "https://www.youtube.com/sh
 |------|------|
 | `scripts/uv_run.sh` | 用 3.11 venv 跑脚本 |
 | `scripts/gemini_cdp.py` | CDP 驱动 Gemini，写出剪辑 JSON |
-| `scripts/remake.py` | 下载 + TTS + 字幕 + 版权图 + 合成 |
+| `scripts/remake.py` | 下载 + TTS + 二创滤镜 + 字幕 + 版权图 + 合成 |
+| `scripts/remix.py` | 按视频 id 生成二创滤镜参数 |
 | `prompts/analyze.txt` | Gemini 提示词 |
 | `assets/copyright.png` | 「鱼公移山」版权图 |
 | `SKILL.md` | Agent skill 说明 |

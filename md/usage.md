@@ -72,6 +72,8 @@ bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --plan output/<id>/
 口播比画面短时：按音频长度裁掉画面尾部。  
 音色固定 `zh-CN-XiaoxiaoNeural`。不做横竖屏转换。
 
+成片默认套二创滤镜（裁切、微旋转、调色、颗粒、暗角、口播轻变调），参数在 `output/<id>/remix.json`。字幕和版权图在滤镜之后烧上。不要左右翻转，不要片尾淡出到黑屏。调试可加 `--no-remix`。
+
 ## 常见问题
 
 - **连不上 9222**：先跑 `start-chrome-cdp.sh`，不要拿日常那个没开调试的 Chrome 硬连。

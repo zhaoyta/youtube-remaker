@@ -91,7 +91,8 @@ bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --all --target-dura
 - 源片是短视频，**不要**做横竖屏转换、不要 blur 铺满、不要分屏
 - 每个片段口播对不齐：画面最多慢放到 1.35x，音频最多加速到 1.30x；还不够就末帧定格。口播更短则裁掉画面尾部
 - 原声丢掉，只留 TTS
-- 每段 `script` 烧成底部硬字幕：黑体、橙红字、浅粉描边、外圈红晕；不要白字黑边
+- **默认开二创滤镜**（减轻判重）：按视频 id 播种，每段不同。画面先改再烧字幕/版权图，避免字被扭。手段包括：头尾各切几十毫秒、微旋转、非对称裁切再拉回、对比/饱和/色相/白平衡、轻锐化、时域颗粒、暗角、口播轻微变调。不要左右翻转（钓鱼空间会反），不要横竖屏转换、不要分屏、不要 blur 铺满。不要片尾淡出到黑屏。参数写到 `output/<id>/remix.json`。调试可加 `--no-remix`
+- 每段 `script` 烧成底部硬字幕：黑体、字号约 66、橙红字、浅粉描边、外圈红晕；底部留白约 220px，避开播放条。不要白字黑边
 - 画面顶部居中叠 `assets/copyright.png`（鱼公移山版权图）；没有该文件才跳过
 - 合成到 `output/<id>/final.mp4` 后停，等用户验收
 
@@ -111,7 +112,8 @@ bash scripts/uv_run.sh scripts/remake.py --url "YOUTUBE_URL" --all --target-dura
 | `scripts/uv_run.sh` | 用该 venv 执行 Python 脚本 |
 | `scripts/check_deps.py` | 运行前检查 ffmpeg / yt-dlp / edge-tts / 3.11 venv |
 | `scripts/gemini_cdp.py` | CDP 驱动 Gemini 网页，写出 `edit.json` |
-| `scripts/remake.py` | yt-dlp + TTS + ffmpeg |
+| `scripts/remake.py` | yt-dlp + TTS + 二创滤镜 + ffmpeg |
+| `scripts/remix.py` | 按视频 id 生成可复现的裁切/调色/颗粒等滤镜 |
 | `prompts/analyze.txt` | Gemini 提示词，`{url}`、`{duration_section}` 会被替换 |
 
 选择器在 `scripts/gemini_selectors.py`。Gemini 改版导致点不到输入框时，只改这个文件。更完整的本机操作说明见 `usage.md`（仓库里是 `md/usage.md`）。

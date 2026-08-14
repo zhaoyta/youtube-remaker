@@ -12,7 +12,12 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+SCRIPT_DIR = Path(__file__).resolve().parent
+ROOT = SCRIPT_DIR.parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+import remix  # noqa: E402
+
 VOICE = "zh-CN-XiaoxiaoNeural"
 MAX_VIDEO_SLOW = 1.35
 MAX_AUDIO_FAST = 1.30
@@ -21,7 +26,10 @@ SUB_FONT = "/System/Library/Fonts/STHeiti Medium.ttc"
 WATERMARK = ROOT / "assets" / "copyright.png"
 SUB_FILL = "0xFF2A12"
 SUB_OUTLINE = "0xFFEDE6"
-SUB_SIZE = 54
+SUB_SIZE = 66
+SUB_MARGIN_BOTTOM = 220
+SUB_LINE_SPACING = 12
+SUB_WRAP = 10
 YT_ID_RE = re.compile(
     r"(?:youtu\.be/|youtube\.com/(?:shorts/|watch\?v=|embed/|live/))([A-Za-z0-9_-]{11})"
 )
@@ -74,6 +82,26 @@ def ffprobe_duration(path: Path) -> float:
         text=True,
     ).strip()
     return float(out)
+
+
+def ffprobe_wh(path: Path) -> tuple[int, int]:
+    out = subprocess.check_output(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=p=0",
+            str(path),
+        ],
+        text=True,
+    ).strip()
+    w, h = out.split(",")
+    return int(w), int(h)
 
 
 def escape_drawtext(text: str) -> str:
@@ -188,24 +216,31 @@ def subtitle_drawtexts(*, textfile: str | None = None, text: str | None = None) 
         src = f"text='{text}'"
     common = (
         f"fontfile={font}:{src}:fontsize={SUB_SIZE}:"
-        "x=(w-text_w)/2:y=h-text_h-110:line_spacing=10:expansion=none"
+        f"x=(w-text_w)/2:y=h-text_h-{SUB_MARGIN_BOTTOM}:"
+        f"line_spacing={SUB_LINE_SPACING}:expansion=none"
     )
     return [
-        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=6:bordercolor={SUB_FILL}",
-        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=2:bordercolor={SUB_OUTLINE}",
+        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=8:bordercolor={SUB_FILL}",
+        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=3:bordercolor={SUB_OUTLINE}",
     ]
 
 
-def wrap_cn(text: str, width: int = 11) -> list[str]:
+def wrap_cn(text: str, width: int = SUB_WRAP) -> list[str]:
     text = "".join(text.split())
     lines: list[str] = []
     buf = ""
     punct = set("，。！？、,!?;；")
     for ch in text:
-        buf += ch
-        if len(buf) >= width or (len(buf) >= 6 and ch in punct):
+        if ch in punct:
+            buf += ch
+            if buf:
+                lines.append(buf)
+                buf = ""
+            continue
+        if len(buf) >= width:
             lines.append(buf)
             buf = ""
+        buf += ch
     if buf:
         lines.append(buf)
     return lines or [text]
@@ -230,11 +265,15 @@ def cut_clip(
     subtitle: str,
     dest: Path,
     sub_txt: Path | None = None,
+    *,
+    remix_params: remix.RemixParams | None = None,
+    frame_size: tuple[int, int] | None = None,
 ) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     clip_dur = max(0.2, end - start)
     tts_dur = ffprobe_duration(audio)
     slow, fast, freeze = sync_plan(clip_dur, tts_dur)
+    out_dur = tts_dur / max(fast, 1e-6)
     log(
         f"片段 {start:.2f}-{end:.2f}s 画面 {clip_dur:.2f}s / 口播 {tts_dur:.2f}s "
         f"→ 慢放 {slow:.3f} 音频加速 {fast:.3f} 定格 {freeze:.2f}s"
@@ -243,6 +282,14 @@ def cut_clip(
     vf = [f"setpts=PTS*{slow:.5f}"]
     if freeze > 0.05:
         vf.append(f"tpad=stop_mode=clone:stop_duration={freeze:.3f}")
+    if remix_params is not None:
+        width, height = frame_size or ffprobe_wh(source)
+        vf.extend(remix.video_filters(remix_params, width, height, out_dur))
+        log(
+            f"二创 {remix_params.anchor} 裁 {remix_params.crop_pct_w*100:.1f}%/"
+            f"{remix_params.crop_pct_h*100:.1f}% 转 {remix_params.rotate_deg:.2f}° "
+            f"色相 {remix_params.hue_deg:.1f} 颗粒 {remix_params.noise}"
+        )
     if overlay.strip() and Path(FONT).exists():
         vf.append(
             "drawtext=fontfile={font}:text='{text}':fontsize=56:fontcolor=yellow:"
@@ -258,8 +305,16 @@ def cut_clip(
         vf.extend(
             subtitle_drawtexts(text=escape_drawtext("\n".join(wrap_cn(subtitle))))
         )
+    vf.append(f"trim=duration={out_dur:.3f},setpts=PTS-STARTPTS")
     vfilter = ",".join(vf)
     afilter = atempo_filter(fast)
+    if remix_params is not None:
+        afilter = remix.audio_filters(afilter, remix_params, out_dur)
+    else:
+        afilter = (
+            f"{afilter},apad=whole_dur={out_dur:.3f},"
+            f"atrim=duration={out_dur:.3f},asetpts=PTS-STARTPTS"
+        )
 
     inputs = [
         "ffmpeg",
@@ -288,6 +343,7 @@ def cut_clip(
         graph = f"[0:v]{vfilter}[v];[1:a]{afilter}[a]"
         log("未找到 assets/copyright.png，跳过版权图")
 
+    crf = str(remix_params.crf if remix_params is not None else 20)
     cmd = inputs + [
         "-filter_complex",
         graph,
@@ -295,11 +351,14 @@ def cut_clip(
         "[v]",
         "-map",
         "[a]",
-        "-shortest",
+        "-t",
+        f"{out_dur:.3f}",
         "-r",
         "30",
         "-c:v",
         "libx264",
+        "-crf",
+        crf,
         "-pix_fmt",
         "yuv420p",
         "-c:a",
@@ -314,21 +373,42 @@ def cut_clip(
 
 
 def concat_parts(parts: list[Path], dest: Path) -> None:
-    list_file = dest.parent / "concat.txt"
-    lines = [f"file '{p.resolve()}'" for p in parts]
-    list_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    if not parts:
+        raise SystemExit("没有可拼接的片段")
+    if len(parts) == 1:
+        shutil.copy2(parts[0], dest)
+        return
+    inputs: list[str] = ["ffmpeg", "-y"]
+    for part in parts:
+        inputs.extend(["-i", str(part)])
+    n = len(parts)
+    v_inputs = "".join(f"[{i}:v:0]" for i in range(n))
+    a_inputs = "".join(f"[{i}:a:0]" for i in range(n))
+    graph = (
+        f"{v_inputs}concat=n={n}:v=1:a=0[v];"
+        f"{a_inputs}concat=n={n}:v=0:a=1[a]"
+    )
     run(
-        [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "concat",
-            "-safe",
-            "0",
-            "-i",
-            str(list_file),
-            "-c",
-            "copy",
+        inputs
+        + [
+            "-filter_complex",
+            graph,
+            "-map",
+            "[v]",
+            "-map",
+            "[a]",
+            "-c:v",
+            "libx264",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-ar",
+            "44100",
+            "-movflags",
+            "+faststart",
             str(dest),
         ]
     )
@@ -341,15 +421,32 @@ def load_plan(path: Path) -> dict:
     return data
 
 
-def edit(plan: dict, workdir: Path, source: Path) -> Path:
+def edit(
+    plan: dict,
+    workdir: Path,
+    source: Path,
+    *,
+    seed: str,
+    enable_remix: bool = True,
+) -> Path:
     parts_dir = workdir / "parts"
     tts_dir = workdir / "tts"
     subs_dir = workdir / "subs"
     parts: list[Path] = []
+    source_dur = ffprobe_duration(source)
+    frame_size = ffprobe_wh(source)
+    clip_count = len(plan["clips"])
+    remix_dump: list[dict] = []
     for i, clip in enumerate(plan["clips"]):
         start, end = parse_ts(clip["start"]), parse_ts(clip["end"])
-        if end <= start:
-            raise SystemExit(f"clips[{i}] 结束时间不大于开始时间")
+        start = max(0.0, start)
+        end = min(end, source_dur)
+        if end - start < 0.2:
+            log(f"clips[{i}] 超出片源 {source_dur:.2f}s，跳过")
+            continue
+        params = remix.make_params(seed, i, clip_count) if enable_remix else None
+        if params is not None:
+            start, end = remix.jitter_span(start, end, source_dur, params)
         script = str(clip.get("script") or clip.get("narration") or "").strip()
         if not script:
             raise SystemExit(f"clips[{i}] 口播为空")
@@ -366,8 +463,26 @@ def edit(plan: dict, workdir: Path, source: Path) -> Path:
             script,
             part,
             subs_dir / f"{i:02d}.txt",
+            remix_params=params,
+            frame_size=frame_size,
         )
         parts.append(part)
+        if params is not None:
+            remix_dump.append(
+                {
+                    "clip": i,
+                    "start": round(start, 3),
+                    "end": round(end, 3),
+                    **params.to_dict(),
+                }
+            )
+    if remix_dump:
+        dump_path = workdir / "remix.json"
+        dump_path.write_text(
+            json.dumps(remix_dump, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        log(f"二创参数: {dump_path}")
     final = workdir / "final.mp4"
     concat_parts(parts, final)
     log(f"成片: {final}")
@@ -392,6 +507,7 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="先调 Gemini CDP 再成片")
     parser.add_argument("--cdp", default="http://127.0.0.1:9222")
     parser.add_argument("--target-duration", type=float, help="期望成片总时长（秒），传给 Gemini")
+    parser.add_argument("--no-remix", action="store_true", help="关闭二创滤镜（调试用）")
     args = parser.parse_args()
 
     require_deps()
@@ -419,7 +535,7 @@ def main() -> int:
 
     plan = load_plan(plan_path)
     source = download(args.url, workdir / "source.mp4")
-    edit(plan, workdir, source)
+    edit(plan, workdir, source, seed=vid, enable_remix=not args.no_remix)
     return 0
 
 
