@@ -1,0 +1,35 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 成片与中间文件
+output/
+*.mp4
+*.mp3
+*.webm
+
+# 本地 Chrome 调试配置
+.chrome-profile/
+.youtube-remaker/
+
+# 环境与密钥
+.env
+.env.*
+!.env.example
+
+# 系统与编辑器
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# 日志
+*.log
+tmp/
