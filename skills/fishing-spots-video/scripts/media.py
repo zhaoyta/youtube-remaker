@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TTS、硬字幕、拼接。不依赖 YouTube 二创 skill。"""
+"""TTS、硬字幕、拼接。"""
 
 from __future__ import annotations
 

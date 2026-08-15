@@ -1,0 +1,95 @@
+{
+  "鲫鱼": {
+    "scientific": "Carassius gibelio",
+    "aliases": ["土鲫", "银鲫", "野鲫", "鲫"],
+    "files": ["Carassius gibelio 2008 G1.jpg", "Carassius gibelio 1.jpg"],
+    "avoid": ["goldfish", "golden fish", "金鱼", "琉金"],
+    "note": "野鲫银灰或青褐，禁止用金鱼/锦鲤图"
+  },
+  "鲤鱼": {
+    "scientific": "Cyprinus carpio",
+    "aliases": ["野鲤", "土鲤"],
+    "files": ["Cyprinus carpio.jpeg"],
+    "avoid": ["koi", "nishikigoi", "锦鲤"],
+    "note": "野鲤须两对、鳞大；禁止用锦鲤图冒充"
+  },
+  "草鱼": {
+    "scientific": "Ctenopharyngodon idella",
+    "aliases": ["鲩", "白鲩"],
+    "files": ["Ctenopharyngodon idella.jpg"]
+  },
+  "鲢鱼": {
+    "scientific": "Hypophthalmichthys molitrix",
+    "aliases": ["白鲢", "鲢子"],
+    "files": ["Hypophthalmichthys molitrix.jpg"]
+  },
+  "鳙鱼": {
+    "scientific": "Hypophthalmichthys nobilis",
+    "aliases": ["花鲢", "胖头", "大头鲢"],
+    "files": ["Hypophthalmichthys nobilis.jpg"]
+  },
+  "青鱼": {
+    "scientific": "Mylopharyngodon piceus",
+    "aliases": ["青鲩", "螺蛳青"],
+    "files": ["Mylopharyngodon piceus.jpg"]
+  },
+  "加州鲈": {
+    "scientific": "Micropterus salmoides",
+    "aliases": ["大口黑鲈", "路亚鲈"],
+    "files": ["Micropterus salmoides.jpg"],
+    "avoid": ["Lateolabrax", "海鲈", "花鲈"],
+    "note": "和海鲈 Lateolabrax japonicus 不是同一种"
+  },
+  "海鲈": {
+    "scientific": "Lateolabrax japonicus",
+    "aliases": ["花鲈", "七星鲈"],
+    "files": [],
+    "avoid": ["Micropterus", "大口黑鲈"]
+  },
+  "罗非鱼": {
+    "scientific": "Oreochromis niloticus",
+    "aliases": ["罗非", "非洲鲫"],
+    "files": ["Oreochromis niloticus.jpg"]
+  },
+  "鳜鱼": {
+    "scientific": "Siniperca chuatsi",
+    "aliases": ["桂鱼", "季花鱼"],
+    "files": ["Siniperca chuatsi.jpg"]
+  },
+  "黄颡鱼": {
+    "scientific": "Tachysurus fulvidraco",
+    "aliases": ["黄辣丁", "昂刺", "嘎鱼"],
+    "files": [],
+    "search": ["Tachysurus fulvidraco", "Pelteobagrus fulvidraco"]
+  },
+  "鲶鱼": {
+    "scientific": "Silurus asotus",
+    "aliases": ["土鲶", "鲇"],
+    "files": [],
+    "search": ["Silurus asotus"]
+  },
+  "翘嘴": {
+    "scientific": "Culter alburnus",
+    "aliases": ["翘嘴鲌", "白鱼"],
+    "files": [],
+    "search": ["Culter alburnus", "Chanodichthys erythropterus"]
+  },
+  "鳊鱼": {
+    "scientific": "Parabramis pekinensis",
+    "aliases": ["长春鳊", "鳊"],
+    "files": [],
+    "search": ["Parabramis pekinensis"]
+  },
+  "马口": {
+    "scientific": "Opsariichthys bidens",
+    "aliases": ["桃花鱼"],
+    "files": [],
+    "search": ["Opsariichthys bidens"]
+  },
+  "白条": {
+    "scientific": "Hemiculter leucisculus",
+    "aliases": ["餐条", "白鲦"],
+    "files": [],
+    "search": ["Hemiculter leucisculus"]
+  }
+}

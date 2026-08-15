@@ -1,0 +1,75 @@
+{
+  "蚯蚓": {
+    "kind": "photo",
+    "scientific": "Eisenia fetida",
+    "aliases": ["红蚯蚓", "蚯蚓饵"],
+    "files": ["Eisenia fetida HC1.jpg", "Eisenia fetida worm.JPG"],
+    "search": ["Eisenia fetida"],
+    "avoid": ["Chironomus", "Nereis", "沙蚕"],
+    "note": "台钓常用红蚯蚓。红虫不是蚯蚓，沙蚕是海钓饵",
+    "hooking": "从头部穿入，留一段尾巴会动"
+  },
+  "红虫": {
+    "kind": "photo",
+    "scientific": "Chironomus",
+    "aliases": ["摇蚊幼虫", "红虫饵"],
+    "files": ["Chironomus spec. (Chironomidae) - (larva), Elst (Gld), the Netherlands.jpg", "Chironomus.jpg"],
+    "search": ["Chironomus larva"],
+    "avoid": ["earthworm", "Eisenia", "Nereis", "Glycera", "沙蚕", "imago"],
+    "note": "红虫是摇蚊幼虫，细小鲜红分节。不是蚯蚓，也不是海钓沙蚕",
+    "hooking": "几条捆一把挂，或红虫夹，钩尖仍要外露"
+  },
+  "玉米": {
+    "kind": "photo",
+    "scientific": "Zea mays",
+    "aliases": ["玉米粒", "嫩玉米", "老玉米"],
+    "files": ["Corncobs.jpg"],
+    "search": ["Zea mays kernels"],
+    "note": "挂钩用黄玉米粒，不是整穗当特写就完事；钩从粒侧穿过、钩尖露出",
+    "hooking": "从粒侧穿过，钩尖露出"
+  },
+  "麦粒": {
+    "kind": "photo",
+    "scientific": "Triticum aestivum",
+    "aliases": ["小麦", "麦子"],
+    "files": [],
+    "search": ["wheat grains Triticum"],
+    "note": "泡开的麦粒挂钩，不是面粉团"
+  },
+  "螺蛳": {
+    "kind": "photo",
+    "scientific": "Cipangopaludina cathayensis",
+    "aliases": ["田螺", "螺丝"],
+    "files": [],
+    "search": ["Cipangopaludina", "Bellamya"],
+    "note": "青鱼常用，去壳或敲碎挂钩，不要画成海螺"
+  },
+  "拉饵": {
+    "kind": "draw",
+    "model": "pull_bait",
+    "aliases": ["拉丝饵", "拉饵团"],
+    "tell": "有拉丝纤维，挂钩蓬松，能拉出丝。不是光滑圆球",
+    "note": "拉丝粉让饵出纤维。禁止画成搓饵那样的实心圆球，也不要画品牌袋"
+  },
+  "搓饵": {
+    "kind": "draw",
+    "model": "pinch_bait",
+    "aliases": ["搓饵团", "搓丸"],
+    "tell": "手指搓成光滑椭圆或圆球，实心，包住钩弯",
+    "note": "没有拉丝。比拉饵实、雾化慢"
+  },
+  "散炮": {
+    "kind": "draw",
+    "model": "loose_cannon",
+    "aliases": ["散炮饵", "干散"],
+    "tell": "干散、捏得住但入水就散，用来打窝带钩",
+    "note": "不是湿拉饵。颗粒分明、颜色偏浅"
+  },
+  "蘸饵": {
+    "kind": "draw",
+    "model": "dip_bait",
+    "aliases": ["蘸粉", "粘粉"],
+    "tell": "钩上先挂粘粉或湿饵，再蘸一层干粉",
+    "note": "外层是干粉壳，不是又一团搓饵"
+  }
+}

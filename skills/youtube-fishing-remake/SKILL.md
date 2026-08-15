@@ -47,7 +47,7 @@ bash skills/youtube-fishing-remake/scripts/setup_venv.sh
 ## 工作流
 
 **skill 根目录**：`skills/youtube-fishing-remake/`（安装后是 `~/.cursor/skills/youtube-fishing-remake`）。  
-在**仓库根目录**执行下面的命令，成片写到当前工作区 `output/<youtube_id>/`。不要用掉点成片 skill，也不要往别的 skill 目录写代码。
+在**仓库根目录**执行下面的命令，成片写到当前工作区 `output/<youtube_id>/`。只改本目录里的脚本。
 
 ```
 Task Progress:

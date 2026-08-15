@@ -7,7 +7,8 @@
 | 目录 | 做什么 |
 |------|------|
 | [`skills/youtube-fishing-remake`](skills/youtube-fishing-remake/SKILL.md) | YouTube 短视频 → Gemini 网页理解 → 抖音二创片 |
-| [`skills/fishing-spots-video`](skills/fishing-spots-video/SKILL.md) | 某地免费掉点 → OSM 地图卡 + 口播合集 |
+| [`skills/fishing-spots-video`](skills/fishing-spots-video/SKILL.md) | 某地免费掉点 → 去重后按区各一条 OSM 地图卡合集 |
+| [`skills/fishing-lesson-video`](skills/fishing-lesson-video/SKILL.md) | 用户给主题 → 图文卡 + 女声口播的钓鱼教学课（约 3 分钟） |
 
 新增 skill：在 `skills/` 下新建目录，自带 `SKILL.md`、`scripts/`、`requirements.txt`，不要改别的 skill 里的文件。
 
@@ -38,16 +39,25 @@ bash skills/youtube-fishing-remake/scripts/uv_run.sh \
   skills/youtube-fishing-remake/scripts/remake.py --all --url "https://www.youtube.com/shorts/xxxx"
 ```
 
-掉点合集（先写好 `output/<slug>/spots.json`）：
+掉点合集（给城市名会按区拆成多条；先写好 `output/<city>/all.json`）：
 
 ```bash
 bash skills/fishing-spots-video/scripts/uv_run.sh \
-  skills/fishing-spots-video/scripts/build.py \
-  --spots output/<slug>/spots.json \
+  skills/fishing-spots-video/scripts/build_city.py \
+  --spots output/<city>/all.json \
+  --workdir output/<city>
+```
+
+教学课（每次给一个主题，先写 `output/<slug>/lesson.json`）：
+
+```bash
+bash skills/fishing-lesson-video/scripts/uv_run.sh \
+  skills/fishing-lesson-video/scripts/build.py \
+  --lesson output/<slug>/lesson.json \
   --workdir output/<slug>
 ```
 
-成片都在当前工作区 `output/`。排错见 `skills/youtube-fishing-remake/usage.md`。
+成片都在当前工作区 `output/`。排错见 `skills/youtube-fishing-remake/usage.md`。教学课写法见 `md/fishing-lesson-video.md`。
 
 ## License
 
