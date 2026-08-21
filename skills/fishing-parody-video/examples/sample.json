@@ -1,0 +1,37 @@
+{
+  "slug": "crucian-roast-strawberry-bait",
+  "angle_key": "crucian-roast-strawberry-bait",
+  "pov": "fish",
+  "style": "paper-gag",
+  "voice": "yunxia",
+  "rate": "+22%",
+  "pitch": "+12Hz",
+  "cross_trend": "泛职场摸鱼/开会情绪，映射水下董事会",
+  "trend_source": "模仿鱼开麦吐槽饵料结构，钩子改为草莓味拉饵",
+  "title": "草莓味？至于吗",
+  "hook_one_liner": "水下第一条鱼开麦：这饵香得假",
+  "douyin_title": "鱼开麦了 草莓味饵至于这么夸张吗",
+  "douyin_intro": "恶搞短片，非真实鱼获。钓友评论区说说你被哪种饵戏耍过。",
+  "douyin_tags": ["#鱼公移山", "#钓鱼恶搞", "#鱼视角", "#空军", "#野钓"],
+  "cast": {
+    "fish": "圆滚鲫鱼，浅金体色，眉毛似的眼上纹，爱翻白眼",
+    "angler": "戴宽边防晒帽的瘦高男，绿背心"
+  },
+  "panels": [
+    {
+      "file": "panels/01.png",
+      "script": "喂，上面那位，草莓味粉团刚甩下来的时候，整条河都甜得发假。",
+      "image_prompt": "Underwater fisheye view, round cartoon crucian carp face filling frame, rolling eyes at a pink bait ball on a hook in foreground, teal water, cream light rays. Style: vertical 9:16 comic gag illustration, thick black ink outlines, flat color blocks, teal-green water and cream paper palette with one coral accent, exaggerated cartoon faces, clean silhouette, no photorealism, no purple neon glow, no UI mockup, no watermark text, no brand logos, no bloody hook-in-mouth gore."
+    },
+    {
+      "file": "panels/02.png",
+      "script": "我们闻是闻了，围着钩开会表决：香归香，这钩也太亮了吧。",
+      "image_prompt": "Same cartoon crucian carp swimming past a ridiculous oversized pink bait cloud, holding nose gesture, other small fish gossiping, underwater comic panel. Style: vertical 9:16 comic gag illustration, thick black ink outlines, flat color blocks, teal-green water and cream paper palette with one coral accent, exaggerated cartoon faces, clean silhouette, no photorealism, no purple neon glow, no UI mockup, no watermark text, no brand logos, no bloody hook-in-mouth gore."
+    },
+    {
+      "file": "panels/03.png",
+      "script": "结论：咬饵的出局。你再甩十杆，我们继续摸鱼。你最长空军几天？",
+      "image_prompt": "Cartoon crucian carp leading a tiny underwater meeting around a rock, ignoring the hook above, angler silhouette blurry on surface stomping. Style: vertical 9:16 comic gag illustration, thick black ink outlines, flat color blocks, teal-green water and cream paper palette with one coral accent, exaggerated cartoon faces, clean silhouette, no photorealism, no purple neon glow, no UI mockup, no watermark text, no brand logos, no bloody hook-in-mouth gore."
+    }
+  ]
+}

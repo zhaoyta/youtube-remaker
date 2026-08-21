@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "account": "鱼公移山",
+  "series": "钓鱼恶搞",
+  "used": [
+    {
+      "slug": "grasscarp-boss-free-buffet",
+      "angle_key": "grasscarp-boss-free-buffet-groundbait",
+      "pov": "fish",
+      "style": "fisheye-underwater",
+      "hook_one_liner": "草鱼霸总开麦：你这是钓鱼还是开食堂",
+      "trend_source": "模仿鱼开麦看穿人类圈套结构，钩子改为草鱼霸总吐槽打窝变自助餐",
+      "cross_trend": "泛职场摸鱼/开会情绪，映射草鱼董事会否决银钩",
+      "created": "2026-08-21"
+    },
+    {
+      "slug": "angler-dawn-homework-slipper",
+      "angle_key": "angler-dawn-homework-old-slipper",
+      "pov": "angler",
+      "style": "comic-teal",
+      "hook_one_liner": "天不亮蹲岸边交作业，提上来一只拖鞋",
+      "trend_source": "模仿空军钓到鞋翻车结构，包装成黎明交作业式爆护宣言后提拖鞋",
+      "cross_trend": "开学季切回早起/交作业焦虑（泛化情绪，不点名学校机构）",
+      "created": "2026-08-21"
+    },
+    {
+      "slug": "angler-killcam-greedy-carp",
+      "angle_key": "angler-killcam-greedy-carp-git-gud",
+      "pov": "angler",
+      "style": "paper-gag",
+      "hook_one_liner": "拎着鲤鱼看回放：你这波纯送",
+      "trend_source": "模仿淘汰回放嘲鱼结构，包装成鲤鱼贪吃送人头后被强制看复盘",
+      "cross_trend": "电竞淘汰回放/菜就多练垃圾话（泛游戏梗，不点名战队主播）",
+      "created": "2026-08-21"
+    }
+  ]
+}

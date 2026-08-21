@@ -18,7 +18,8 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 import remix  # noqa: E402
 
-VOICE = "zh-CN-XiaoxiaoNeural"
+DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural"
+VOICE = DEFAULT_VOICE
 MAX_VIDEO_SLOW = 1.35
 MAX_AUDIO_FAST = 1.30
 FONT = "/System/Library/Fonts/PingFang.ttc"
@@ -29,7 +30,8 @@ SUB_OUTLINE = "0xFFEDE6"
 SUB_SIZE = 66
 SUB_MARGIN_BOTTOM = 220
 SUB_LINE_SPACING = 12
-SUB_WRAP = 10
+SUB_WRAP = 14  # 单行字数；超过才硬切，避免正常短句被拦腰斩断
+SUB_HARD_WRAP = 18  # 无标点长句超过此长度才强制拆行
 YT_ID_RE = re.compile(
     r"(?:youtu\.be/|youtube\.com/(?:shorts/|watch\?v=|embed/|live/))([A-Za-z0-9_-]{11})"
 )
@@ -219,24 +221,6 @@ def sync_plan(video_dur: float, tts_dur: float) -> tuple[float, float, float]:
     return slow, fast, freeze
 
 
-def subtitle_drawtexts(*, textfile: str | None = None, text: str | None = None) -> list[str]:
-    """橙红字 + 浅粉描边 + 外圈红晕，对齐参考字幕风格。"""
-    font = SUB_FONT if Path(SUB_FONT).exists() else FONT
-    if textfile:
-        src = f"textfile='{textfile}'"
-    else:
-        src = f"text='{text}'"
-    common = (
-        f"fontfile={font}:{src}:fontsize={SUB_SIZE}:"
-        f"x=(w-text_w)/2:y=h-text_h-{SUB_MARGIN_BOTTOM}:"
-        f"line_spacing={SUB_LINE_SPACING}:expansion=none"
-    )
-    return [
-        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=8:bordercolor={SUB_FILL}",
-        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=3:bordercolor={SUB_OUTLINE}",
-    ]
-
-
 def wrap_cn(text: str, width: int = SUB_WRAP) -> list[str]:
     text = "".join(text.split())
     lines: list[str] = []
@@ -258,13 +242,105 @@ def wrap_cn(text: str, width: int = SUB_WRAP) -> list[str]:
     return lines or [text]
 
 
-def escape_filter_path(path: Path) -> str:
-    return str(path.resolve()).replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+def split_script_cues(text: str) -> list[str]:
+    """把口播拆成短字幕句：按标点切，过长再按字数切。禁止整段糊成一坨。"""
+    text = "".join(str(text or "").split())
+    if not text:
+        return []
+    raw: list[str] = []
+    buf = ""
+    punct = set("，。！？、,!?;；…—～~")
+    for ch in text:
+        buf += ch
+        if ch in punct:
+            piece = buf.strip()
+            if piece:
+                raw.append(piece)
+            buf = ""
+    if buf.strip():
+        raw.append(buf.strip())
+    cues: list[str] = []
+    for piece in raw or [text]:
+        body = piece
+        while len(body) > SUB_HARD_WRAP:
+            # 尽量在靠后位置找可断点，找不到再按 SUB_WRAP 切
+            cut = SUB_WRAP
+            for i in range(min(len(body) - 1, SUB_HARD_WRAP), max(4, SUB_WRAP // 2), -1):
+                if body[i - 1] in "的了吗呢吧啊呀":
+                    cut = i
+                    break
+            cues.append(body[:cut])
+            body = body[cut:]
+        if body:
+            cues.append(body)
+    return cues or [text]
 
 
-def write_sub_txt(text: str, dest: Path) -> Path:
+def cue_timeline(cues: list[str], duration: float) -> list[tuple[float, float, str]]:
+    """按字数比例分配时间，与口播节奏大致对齐。"""
+    if not cues:
+        return []
+    duration = max(0.2, duration)
+    weights = [max(1, len("".join(ch for ch in c if ch.strip()))) for c in cues]
+    total = sum(weights)
+    timeline: list[tuple[float, float, str]] = []
+    t = 0.0
+    for i, (cue, w) in enumerate(zip(cues, weights)):
+        if i == len(cues) - 1:
+            end = duration
+        else:
+            end = min(duration, t + duration * (w / total))
+            # 过短会闪，至少给 0.35s；不够就挤后面
+            end = max(end, t + 0.35)
+            end = min(end, duration - 0.05 * (len(cues) - i - 1))
+        if end <= t:
+            end = min(duration, t + 0.2)
+        timeline.append((t, end, cue))
+        t = end
+    if timeline:
+        s, _, c = timeline[-1]
+        timeline[-1] = (s, duration, c)
+    return timeline
+
+
+def subtitle_drawtexts_for_cue(text: str, *, enable: str | None = None) -> list[str]:
+    """单句字幕：橙红字 + 浅粉描边 + 外圈红晕。可带 enable 做逐句切换。"""
+    font = SUB_FONT if Path(SUB_FONT).exists() else FONT
+    # 单句优先一行；超长才折行，仍只显示当前句
+    display = "\n".join(wrap_cn(text)) if len(text) > SUB_WRAP else text
+    src = f"text='{escape_drawtext(display)}'"
+    common = (
+        f"fontfile={font}:{src}:fontsize={SUB_SIZE}:"
+        f"x=(w-text_w)/2:y=h-text_h-{SUB_MARGIN_BOTTOM}:"
+        f"line_spacing={SUB_LINE_SPACING}:expansion=none"
+    )
+    if enable:
+        common = f"{common}:enable='{enable}'"
+    return [
+        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=8:bordercolor={SUB_FILL}",
+        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=3:bordercolor={SUB_OUTLINE}",
+    ]
+
+
+def build_subtitle_filters(script: str, out_dur: float) -> list[str]:
+    """硬字幕必须与 TTS 文案一致，并按句切换，不要整段一直堆在底部。"""
+    cues = split_script_cues(script)
+    timed = cue_timeline(cues, out_dur)
+    filters: list[str] = []
+    for start, end, cue in timed:
+        # filter graph 里逗号要转义
+        enable = f"between(t\\,{start:.3f}\\,{end:.3f})"
+        filters.extend(subtitle_drawtexts_for_cue(cue, enable=enable))
+    return filters
+
+
+def write_sub_cues(script: str, out_dur: float, dest: Path) -> Path:
+    """调试用：写出逐句字幕时间轴，便于核对文案=语音。"""
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text("\n".join(wrap_cn(text)), encoding="utf-8")
+    lines = []
+    for i, (start, end, cue) in enumerate(cue_timeline(split_script_cues(script), out_dur), 1):
+        lines.append(f"{i:02d}\t{start:.3f}-{end:.3f}\t{cue}")
+    dest.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return dest
 
 
@@ -310,13 +386,13 @@ def cut_clip(
                 text=escape_drawtext(overlay.strip().replace("\n", " ")),
             )
         )
-    if subtitle.strip() and Path(FONT).exists() and sub_txt is not None:
-        write_sub_txt(subtitle, sub_txt)
-        vf.extend(subtitle_drawtexts(textfile=escape_filter_path(sub_txt)))
-    elif subtitle.strip() and Path(FONT).exists():
-        vf.extend(
-            subtitle_drawtexts(text=escape_drawtext("\n".join(wrap_cn(subtitle))))
-        )
+    spoken = subtitle.strip()
+    if spoken and Path(FONT).exists():
+        if sub_txt is not None:
+            write_sub_cues(spoken, out_dur, sub_txt)
+        cues = split_script_cues(spoken)
+        log(f"字幕 {len(cues)} 句切换（与口播同文）")
+        vf.extend(build_subtitle_filters(spoken, out_dur))
     vf.append(f"trim=duration={out_dur:.3f},setpts=PTS-STARTPTS")
     vfilter = ",".join(vf)
     afilter = atempo_filter(fast)
@@ -577,9 +653,22 @@ def main() -> int:
     parser.add_argument("--cdp", default="http://127.0.0.1:9222")
     parser.add_argument("--target-duration", type=float, help="期望成片总时长（秒），传给 Gemini")
     parser.add_argument("--no-remix", action="store_true", help="关闭二创滤镜（调试用）")
+    parser.add_argument(
+        "--voice",
+        default=DEFAULT_VOICE,
+        help=f"edge-tts 音色（默认 {DEFAULT_VOICE}）",
+    )
+    parser.add_argument(
+        "--prompt",
+        help="传给 gemini_cdp.py 的提示词文件（仅 --all / 缺 plan 时生效）",
+    )
     args = parser.parse_args()
 
     require_deps()
+
+    global VOICE
+    VOICE = args.voice
+    log(f"TTS 音色: {VOICE}")
 
     vid = youtube_id(args.url)
     workdir = Path(args.workdir) if args.workdir else Path.cwd() / "output" / vid
@@ -601,6 +690,8 @@ def main() -> int:
             "--source-duration",
             f"{ffprobe_duration(source):.3f}",
         ]
+        if args.prompt:
+            cmd.extend(["--prompt", args.prompt])
         title = youtube_title(args.url)
         if title:
             cmd.extend(["--source-title", title])

@@ -95,7 +95,7 @@ bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-rema
 - 每个片段口播对不齐：画面最多慢放到 1.35x，音频最多加速到 1.30x；还不够就末帧定格。口播更短则裁掉画面尾部
 - 原声丢掉，只留 TTS
 - **默认开二创滤镜**（减轻判重）：按视频 id 播种，每段不同。画面先改再烧字幕/版权图，避免字被扭。手段包括：头尾各切几十毫秒、微旋转、非对称裁切再拉回、对比/饱和/色相/白平衡、轻锐化、时域颗粒、暗角、口播轻微变调。不要左右翻转（钓鱼空间会反），不要横竖屏转换、不要分屏、不要 blur 铺满。不要片尾淡出到黑屏。参数写到 `output/<id>/remix.json`。调试可加 `--no-remix`
-- 每段 `script` 烧成底部硬字幕：黑体、字号约 66、橙红字、浅粉描边、外圈红晕；底部留白约 220px，避开播放条。不要白字黑边
+- **字幕与口播必须同文、逐句切换**：烧字幕的字符串 = 该段 TTS 的 `script`，禁止另写摘要字幕。按标点拆成短句，按字数比例分配出现时间，同一时刻只显示当前一句；禁止整段口播折成多行一直糊在底部「一坨」。样式：黑体、字号约 66、橙红字、浅粉描边、外圈红晕；底部留白约 220px，避开播放条。不要白字黑边。时间轴写到 `output/<id>/subs/*.txt` 便于核对
 - 画面顶部居中叠 `assets/copyright.png`（鱼公移山版权图）；没有该文件才跳过
 - 合成到 `output/<id>/final.mp4` 后停，等用户验收
 - **每次成片必须把抖音爆款标题、作品简介、标签交给用户**（`edit.json` 的 `douyin_title` / `douyin_intro` / `douyin_tags`，脚本也会打到终端并写 `output/<id>/caption.txt`）。不要只给成片路径
@@ -107,6 +107,11 @@ bash skills/youtube-fishing-remake/scripts/uv_run.sh skills/youtube-fishing-rema
 ## 账号口播
 
 抖音号「鱼公移山」。提示词在 `prompts/analyze.txt`。Gemini 必须先写 `visuals`（画面事实）再定 `video_type`，口播只写画面里有的东西；讲解片要叫出钩名并讲外形/原理，禁止「能派上大用场」这类空话。JSON：`video_type`、`topic`、`visuals`、`douyin_title`、`douyin_intro`、`douyin_tags`、`youtube_url`、`clips[]`（start/end 不超过片源，短片至少 2 段）。不要选人脸。口播约 3 字/秒。文案和画面不符就开新对话重写。
+
+**口播/字幕文案规范（写进 prompt，成片也要遵守）：**
+- `script` 就是最终口播原文，也是硬字幕原文；标题/简介另写，不要把整段简介塞进字幕
+- 一句里用逗号、句号自然断气，方便按句出字；不要写成没有标点的长串
+- 单段 `script` 宁短勿长；听感上是一句接一句，不是底部堆满字
 
 ## 路径
 
