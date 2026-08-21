@@ -20,6 +20,8 @@ SUB_SIZE = 66
 SUB_MARGIN_BOTTOM = 220
 SUB_LINE_SPACING = 12
 SUB_WRAP = 10
+# 版权图右上角边距（build.py overlay 用）
+WATERMARK_MARGIN = 24
 
 
 def log(msg: str) -> None:
@@ -79,23 +81,6 @@ def tts(text: str, dest: Path) -> Path:
     return dest
 
 
-def subtitle_drawtexts(*, textfile: str | None = None, text: str | None = None) -> list[str]:
-    font = SUB_FONT if Path(SUB_FONT).exists() else FONT
-    if textfile:
-        src = f"textfile='{textfile}'"
-    else:
-        src = f"text='{text}'"
-    common = (
-        f"fontfile={font}:{src}:fontsize={SUB_SIZE}:"
-        f"x=(w-text_w)/2:y=h-text_h-{SUB_MARGIN_BOTTOM}:"
-        f"line_spacing={SUB_LINE_SPACING}:expansion=none"
-    )
-    return [
-        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=8:bordercolor={SUB_FILL}",
-        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=3:bordercolor={SUB_OUTLINE}",
-    ]
-
-
 def wrap_cn(text: str, width: int = SUB_WRAP) -> list[str]:
     text = "".join(text.split())
     lines: list[str] = []
@@ -117,13 +102,99 @@ def wrap_cn(text: str, width: int = SUB_WRAP) -> list[str]:
     return lines or [text]
 
 
+def split_cues(text: str) -> list[str]:
+    """按标点切成口播短句，一句一屏，随音频切换。"""
+    text = "".join(str(text).split())
+    if not text:
+        return [""]
+    cues: list[str] = []
+    buf = ""
+    punct = set("，。！？、,!?;；")
+    for ch in text:
+        buf += ch
+        if ch in punct:
+            cues.append(buf)
+            buf = ""
+    if buf:
+        cues.append(buf)
+    # 过长无标点句再按字数切开，避免单屏一大坨
+    out: list[str] = []
+    for cue in cues:
+        if len(cue) <= SUB_WRAP + 2:
+            out.append(cue)
+            continue
+        out.extend(wrap_cn(cue, SUB_WRAP))
+    return out or [text]
+
+
+def allocate_cue_times(cues: list[str], duration: float) -> list[tuple[str, float, float]]:
+    """按字数比例分配每句起止时间（秒）。"""
+    weights = [max(len("".join(c.split())), 1) for c in cues]
+    total = sum(weights) or 1
+    # 前后各留一点空隙，避免首尾闪切
+    start = 0.08
+    end_pad = 0.05
+    usable = max(duration - start - end_pad, 0.2)
+    t = start
+    timed: list[tuple[str, float, float]] = []
+    for i, (cue, w) in enumerate(zip(cues, weights)):
+        span = usable * (w / total)
+        if i == len(cues) - 1:
+            t1 = max(duration - end_pad, t + 0.12)
+        else:
+            t1 = t + span
+        timed.append((cue, t, t1))
+        t = t1
+    return timed
+
+
+def subtitle_drawtexts(*, textfile: str | None = None, text: str | None = None) -> list[str]:
+    """整段字幕（兼容旧调用）；新成片请用 timed_subtitle_drawtexts。"""
+    font = SUB_FONT if Path(SUB_FONT).exists() else FONT
+    if textfile:
+        src = f"textfile='{textfile}'"
+    else:
+        src = f"text='{escape_drawtext(text or '')}'"
+    common = (
+        f"fontfile={font}:{src}:fontsize={SUB_SIZE}:"
+        f"x=(w-text_w)/2:y=h-text_h-{SUB_MARGIN_BOTTOM}:"
+        f"line_spacing={SUB_LINE_SPACING}:expansion=none"
+    )
+    return [
+        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=8:bordercolor={SUB_FILL}",
+        f"drawtext={common}:fontcolor={SUB_FILL}:borderw=3:bordercolor={SUB_OUTLINE}",
+    ]
+
+
+def timed_subtitle_drawtexts(script: str, duration: float) -> list[str]:
+    """底部口播字幕：一句一屏，随音频时间切换。"""
+    font = SUB_FONT if Path(SUB_FONT).exists() else FONT
+    cues = allocate_cue_times(split_cues(script), duration)
+    filters: list[str] = []
+    for cue, t0, t1 in cues:
+        # 单句若仍偏长，内部换行但同一时间窗
+        lines = wrap_cn(cue, SUB_WRAP)
+        text = escape_drawtext("\n".join(lines))
+        enable = f"between(t\\,{t0:.3f}\\,{t1:.3f})"
+        common = (
+            f"fontfile={font}:text='{text}':fontsize={SUB_SIZE}:"
+            f"x=(w-text_w)/2:y=h-text_h-{SUB_MARGIN_BOTTOM}:"
+            f"line_spacing={SUB_LINE_SPACING}:expansion=none:"
+            f"enable='{enable}'"
+        )
+        filters.append(f"drawtext={common}:fontcolor={SUB_FILL}:borderw=8:bordercolor={SUB_FILL}")
+        filters.append(f"drawtext={common}:fontcolor={SUB_FILL}:borderw=3:bordercolor={SUB_OUTLINE}")
+    return filters
+
+
 def escape_filter_path(path: Path) -> str:
     return str(path.resolve()).replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
 
 
 def write_sub_txt(text: str, dest: Path) -> Path:
+    """写出切句预览（调试用）；成片不再用整文件一次性叠字。"""
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text("\n".join(wrap_cn(text)), encoding="utf-8")
+    dest.write_text("\n".join(split_cues(text)), encoding="utf-8")
     return dest
 
 

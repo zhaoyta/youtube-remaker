@@ -276,21 +276,21 @@ def still_clip(image: Path, audio: Path, subtitle: str, dest: Path, sub_txt: Pat
     tts_dur = media.ffprobe_duration(audio)
     frames = max(int(round(tts_dur * FPS)), FPS)
     media.write_sub_txt(subtitle, sub_txt)
-    sub_path = media.escape_filter_path(sub_txt)
     vf = (
         f"scale=1200:2133:force_original_aspect_ratio=increase,"
         f"crop=1200:2133,"
         f"zoompan=z='min(1.0+0.00055*on,1.06)':x='iw/2-(iw/zoom/2)':"
         f"y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps={FPS},"
-        + ",".join(media.subtitle_drawtexts(textfile=sub_path))
+        + ",".join(media.timed_subtitle_drawtexts(subtitle, tts_dur))
     )
     inputs = ["ffmpeg", "-y", "-loop", "1", "-i", str(image), "-i", str(audio)]
     mark = media.WATERMARK if media.WATERMARK.exists() else None
+    wm_m = getattr(media, "WATERMARK_MARGIN", 24)
     if mark:
         graph = (
             f"[0:v]{vf}[vbase];"
             f"[2:v]format=rgba,colorkey=0x000000:0.12:0.08,scale=400:-1[wm];"
-            f"[vbase][wm]overlay=(W-w)/2:18[v];"
+            f"[vbase][wm]overlay=W-w-{wm_m}:{wm_m}[v];"
             f"[1:a]apad=whole_dur={tts_dur:.3f},atrim=duration={tts_dur:.3f},"
             f"asetpts=PTS-STARTPTS[a]"
         )

@@ -103,14 +103,29 @@ def area_plan(base: dict, city: str, area: str, spots: list[dict]) -> dict:
         item["n"] = i
         numbered.append(item)
     names = "、".join(str(s["name"]) for s in numbered[:4])
+    hook = str(base.get("culture_hook") or "").strip()
+    riverish = next(
+        (
+            str(s["name"]).split("·")[0]
+            for s in numbered
+            if any(k in str(s["name"]) for k in ("河", "运河", "海", "湖", "渠"))
+        ),
+        area,
+    )
+    # 区片标题用本区河段名；简介用全市 culture_hook 开场
+    title = f"{city}{area}免费掉点 {riverish}"[:30]
+    if hook:
+        intro = f"{hook}——{area}这边：{names}等。去之前看现场牌子，垃圾带走。"
+    else:
+        intro = f"{names}等。去之前看现场牌子，垃圾带走。"
     out = {k: v for k, v in base.items() if k != "spots"}
     out["city"] = city
     out["area"] = area
     out["title"] = f"{city} {area} {n} 个免费掉点"
     out["subtitle"] = base.get("subtitle") or "地图标注 · 优缺点 · 注意事项"
     out["intro_script"] = f"{city}{area}{n}个免费掉点，位置优缺点注意事项，地图标好了，先收藏。"
-    out["douyin_title"] = f"{city}{area}免费掉点 {n}个标清"
-    out["douyin_intro"] = f"{names}等。去之前看现场牌子，垃圾带走。"
+    out["douyin_title"] = title
+    out["douyin_intro"] = intro
     tags = list(base.get("douyin_tags") or ["#鱼公移山", "#免费钓点", "#野钓"])
     extra = f"#{city}钓鱼"
     if extra not in tags:
@@ -118,7 +133,20 @@ def area_plan(base: dict, city: str, area: str, spots: list[dict]) -> dict:
     extra_area = f"#{area}"
     if extra_area not in tags:
         tags.append(extra_area)
-    out["douyin_tags"] = tags[:6]
+    # 去重保序，最多 8 个
+    seen: set[str] = set()
+    clean_tags: list[str] = []
+    for tag in tags:
+        t = str(tag).strip()
+        if not t:
+            continue
+        if not t.startswith("#"):
+            t = "#" + t.lstrip("#")
+        if t in seen:
+            continue
+        seen.add(t)
+        clean_tags.append(t)
+    out["douyin_tags"] = clean_tags[:8]
     out["spots"] = numbered
     return out
 

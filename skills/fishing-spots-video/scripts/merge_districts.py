@@ -81,7 +81,7 @@ def title_clip(image: Path, audio: Path, dest: Path, min_dur: float = 2.0) -> No
         graph = (
             f"[0:v]{vf}[vbase];"
             f"[2:v]format=rgba,colorkey=0x000000:0.12:0.08,scale=400:-1[wm];"
-            f"[vbase][wm]overlay=(W-w)/2:18[v];"
+            f"[vbase][wm]overlay=W-w-{getattr(media, 'WATERMARK_MARGIN', 24)}:{getattr(media, 'WATERMARK_MARGIN', 24)}[v];"
             f"[1:a]apad=whole_dur={dur:.3f},atrim=duration={dur:.3f},"
             f"asetpts=PTS-STARTPTS[a]"
         )
